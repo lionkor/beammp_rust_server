@@ -28,10 +28,11 @@ lazy_static! {
 // TODO: Return a proper error?
 async fn claim_id() -> Result<u8, ()> {
     let mut lock = TAKEN_PLAYER_IDS.lock().await;
-    for index in 0..=255 {
-        if !lock.contains(&index) {
-            lock.push(index);
-            return Ok(index);
+    for id in 0..=255 {
+        if !lock.contains(&id) {
+            lock.push(id);
+            debug!("Assigning player ID {}", id);
+            return Ok(id);
         }
     }
     // requires more then 255 players on the server to error
@@ -39,6 +40,7 @@ async fn claim_id() -> Result<u8, ()> {
 }
 
 async fn free_id(id: u8) {
+    debug!("Freeing player ID {}", id);
     let mut lock = TAKEN_PLAYER_IDS.lock().await;
     *lock = lock.drain(..).filter(|i| *i != id).collect::<Vec<u8>>();
 }
@@ -77,6 +79,7 @@ pub struct Client {
 
 impl Drop for Client {
     fn drop(&mut self) {
+        debug!("Dropping client ID {}", self.id);
         tokio::spawn(free_id(self.id));
         self.write_runtime.abort();
     }
